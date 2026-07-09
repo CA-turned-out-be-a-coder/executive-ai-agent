@@ -1,7 +1,6 @@
 package com.example.aiassistant;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,13 +20,12 @@ public class ChatController {
 
     @PostMapping("/chat")
     public String chat(@RequestBody ChatRequest request) {
+        chatMemoryService.addUserMessage(request.getConversationId(), request.getMessage());
+
         ChatMemory memory = chatMemoryService.getMemory(request.getConversationId());
-
-        memory.add(UserMessage.from(request.getMessage()));
-
         AiMessage response = chatModel.chat(memory.messages()).aiMessage();
 
-        memory.add(response);
+        chatMemoryService.addAiMessage(request.getConversationId(), response.text());
 
         return response.text();
     }

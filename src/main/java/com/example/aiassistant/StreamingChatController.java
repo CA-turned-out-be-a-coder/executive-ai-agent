@@ -26,8 +26,8 @@ public class StreamingChatController {
     public SseEmitter chatStream(@RequestBody ChatRequest request) {
         SseEmitter emitter = new SseEmitter();
 
+        chatMemoryService.addUserMessage(request.getConversationId(), request.getMessage());
         ChatMemory memory = chatMemoryService.getMemory(request.getConversationId());
-        memory.add(UserMessage.from(request.getMessage()));
 
         streamingChatModel.chat(memory.messages(), new StreamingChatResponseHandler() {
 
@@ -42,7 +42,7 @@ public class StreamingChatController {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                memory.add(completeResponse.aiMessage());
+                chatMemoryService.addAiMessage(request.getConversationId(), completeResponse.aiMessage().text());
                 emitter.complete();
             }
 
