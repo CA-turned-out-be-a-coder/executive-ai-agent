@@ -4,6 +4,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.service.AiServices;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,4 +31,12 @@ public class AiConfig {
                 .build();
     }
 
+    @Bean
+    public Assistant assistant(ChatModel chatModel, ChatMemoryService chatMemoryService, AssistantTools assistantTools) {
+        return AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemoryProvider(memoryId -> chatMemoryService.getMemory(memoryId.toString()))
+                .tools(assistantTools)
+                .build();
+    }
 }

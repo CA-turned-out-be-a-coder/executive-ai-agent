@@ -1,8 +1,5 @@
 package com.example.aiassistant;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.model.chat.ChatModel;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,24 +7,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class ChatController {
 
-    private final ChatModel chatModel;
+    private final Assistant assistant;
     private final ChatMemoryService chatMemoryService;
 
-    public ChatController(ChatModel chatModel, ChatMemoryService chatMemoryService) {
-        this.chatModel = chatModel;
+    public ChatController(Assistant assistant, ChatMemoryService chatMemoryService) {
+        this.assistant = assistant;
         this.chatMemoryService = chatMemoryService;
     }
 
     @PostMapping("/chat")
     public String chat(@RequestBody ChatRequest request) {
-        chatMemoryService.addUserMessage(request.getConversationId(), request.getMessage());
+        chatMemoryService.getMemory(request.getConversationId()); // ensures memory is loaded/seeded
 
-        ChatMemory memory = chatMemoryService.getMemory(request.getConversationId());
-        AiMessage response = chatModel.chat(memory.messages()).aiMessage();
+        String response = assistant.chat(request.getConversationId(), request.getMessage());
 
-        chatMemoryService.addAiMessage(request.getConversationId(), response.text());
+        chatMemoryService.persistUserMessage(request.getConversationId(), request.getMessage());
+        chatMemoryService.persistAiMessage(request.getConversationId(), response);
 
-        return response.text();
+        return response;
     }
-
 }

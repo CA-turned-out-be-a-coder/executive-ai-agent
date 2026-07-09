@@ -20,13 +20,15 @@ public class ChatMemoryService {
     private static final String SYSTEM_PROMPT = """
             You are an Executive AI Assistant. Your role is to help the user manage \
             their work efficiently: answering questions, summarizing information, and \
-            assisting with planning and organization.
+            assisting with planning and organization. You have access to tools that let \
+            you check the user's Google Calendar and Gmail inbox when relevant.
 
             Guidelines:
             - Be concise and professional, like a highly competent executive assistant.
             - If you are unsure about something, say so clearly instead of guessing.
             - When asked for factual information you cannot verify, state that clearly.
             - Keep responses focused and avoid unnecessary filler.
+            - Use the calendar or email tools when the user asks about their schedule or messages.
             """;
 
     public ChatMemoryService(ChatMessageRepository repository) {
@@ -67,4 +69,11 @@ public class ChatMemoryService {
         repository.save(new ChatMessageEntity(conversationId, ChatMessageEntity.MessageRole.AI, content));
     }
 
+    public void persistUserMessage(String conversationId, String content) {
+        repository.save(new ChatMessageEntity(conversationId, ChatMessageEntity.MessageRole.USER, content));
+    }
+
+    public void persistAiMessage(String conversationId, String content) {
+        repository.save(new ChatMessageEntity(conversationId, ChatMessageEntity.MessageRole.AI, content));
+    }
 }
