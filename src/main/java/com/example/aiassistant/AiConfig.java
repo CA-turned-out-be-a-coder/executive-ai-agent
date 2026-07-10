@@ -32,9 +32,10 @@ public class AiConfig {
     }
 
     @Bean
-    public Assistant assistant(ChatModel chatModel, ChatMemoryService chatMemoryService, AssistantTools assistantTools) {
+    public Assistant assistant(ChatModel chatModel, StreamingChatModel streamingChatModel, ChatMemoryService chatMemoryService, AssistantTools assistantTools) {
         return AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
+                .streamingChatModel(streamingChatModel)
                 .chatMemoryProvider(memoryId -> chatMemoryService.getMemory(memoryId.toString()))
                 .tools(assistantTools)
                 .build();
