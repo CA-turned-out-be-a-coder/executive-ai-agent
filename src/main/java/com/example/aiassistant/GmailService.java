@@ -2,9 +2,11 @@ package com.example.aiassistant;
 
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.Base64;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.Draft;
 import com.google.api.services.gmail.model.Message;
+import com.google.api.services.gmail.model.MessagePart;
 import com.google.api.services.gmail.model.ListMessagesResponse;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.AccessToken;
@@ -19,8 +21,8 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.Properties;
 
@@ -74,7 +76,7 @@ public class GmailService {
                     }
                 }
             }
-            results.add(subject + " — from " + from);
+            results.add(subject + " — from " + from + " [ID: " + m.getId() + "]");
         }
         return results;
     }
@@ -102,6 +104,66 @@ public class GmailService {
         return formatMessages(gmailClient, response.getMessages());
     }
 
+    public String getEmailContent(OidcUser principal, String messageId) throws Exception {
+        Gmail gmailClient = buildClient(principal);
+
+        Message full = gmailClient.users().messages()
+                .get("me", messageId)
+                .setFormat("full")
+                .execute();
+
+        String subject = "(no subject)";
+        String from = "(unknown sender)";
+        if (full.getPayload() != null && full.getPayload().getHeaders() != null) {
+            for (var header : full.getPayload().getHeaders()) {
+                if (header.getName().equalsIgnoreCase("Subject")) {
+                    subject = header.getValue();
+                }
+                if (header.getName().equalsIgnoreCase("From")) {
+                    from = header.getValue();
+                }
+            }
+        }
+
+        String body = extractBody(full.getPayload());
+        if (body == null || body.isBlank()) {
+            body = "(no readable body content found)";
+        }
+
+        return "Subject: " + subject + "\nFrom: " + from + "\n\n" + body;
+    }
+
+    private String extractBody(MessagePart part) {
+        if (part == null) {
+            return null;
+        }
+
+        if (part.getBody() != null && part.getBody().getData() != null
+                && ("text/plain".equalsIgnoreCase(part.getMimeType())
+                    || "text/html".equalsIgnoreCase(part.getMimeType()))) {
+            byte[] decoded = Base64.decodeBase64(part.getBody().getData());
+            return new String(decoded, StandardCharsets.UTF_8);
+        }
+
+        if (part.getParts() != null) {
+            String plainFallback = null;
+            for (MessagePart child : part.getParts()) {
+                String childResult = extractBody(child);
+                if (childResult != null) {
+                    if ("text/plain".equalsIgnoreCase(child.getMimeType())) {
+                        return childResult;
+                    }
+                    if (plainFallback == null) {
+                        plainFallback = childResult;
+                    }
+                }
+            }
+            return plainFallback;
+        }
+
+        return null;
+    }
+
     private Message buildMimeMessage(String toEmail, String subject, String bodyText) throws MessagingException {
         Properties props = new Properties();
         Session session = Session.getDefaultInstance(props, null);
@@ -118,7 +180,7 @@ public class GmailService {
         try {
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             email.writeTo(buffer);
-            String encodedEmail = Base64.getUrlEncoder().withoutPadding().encodeToString(buffer.toByteArray());
+            String encodedEmail = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(buffer.toByteArray());
             Message message = new Message();
             message.setRaw(encodedEmail);
             return message;

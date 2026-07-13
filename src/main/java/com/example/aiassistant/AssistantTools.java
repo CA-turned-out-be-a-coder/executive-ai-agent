@@ -43,7 +43,8 @@ public class AssistantTools {
         }
     }
 
-    @Tool("Get the user's recent email subjects and senders")
+    @Tool("Get the user's recent email subjects and senders. Each result includes a message ID in brackets, " +
+            "e.g. [ID: abc123], which must be used with readEmail to see the full body content of a specific email.")
     public String getRecentEmails() {
         try {
             List<String> emails = gmailService.getRecentSubjects(getCurrentUser());
@@ -56,7 +57,8 @@ public class AssistantTools {
 
     @Tool("Search the user's Gmail using Gmail's native search syntax, e.g. 'from:sarah@company.com is:unread', " +
             "'subject:invoice', 'has:attachment newer_than:7d'. Use this whenever the user wants to find specific " +
-            "emails rather than just see the most recent ones.")
+            "emails rather than just see the most recent ones. Each result includes a message ID in brackets, " +
+            "e.g. [ID: abc123], which must be used with readEmail to see the full body content of a specific email.")
     public String searchEmails(String query) {
         try {
             List<String> emails = gmailService.searchEmails(getCurrentUser(), query);
@@ -64,6 +66,17 @@ public class AssistantTools {
             return String.join("\n", emails);
         } catch (Exception e) {
             return "Could not search emails: " + e.getMessage();
+        }
+    }
+
+    @Tool("Reads the full body content of a specific email, not just the subject/sender. Requires the exact " +
+            "messageId shown in brackets from getRecentEmails or searchEmails, e.g. 'abc123'. Use this whenever " +
+            "the user asks what an email says, what it's about, or wants you to summarize or act on its actual content.")
+    public String readEmail(String messageId) {
+        try {
+            return gmailService.getEmailContent(getCurrentUser(), messageId);
+        } catch (Exception e) {
+            return "Could not read email content: " + e.getMessage();
         }
     }
 
@@ -138,7 +151,6 @@ public class AssistantTools {
         try {
             return stockService.getQuote(symbol);
         } catch (Exception e) {
-            e.printStackTrace();
             return "Could not retrieve stock quote: " + e.getMessage();
         }
     }
