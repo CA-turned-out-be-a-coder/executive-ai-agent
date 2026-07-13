@@ -37,6 +37,7 @@ public class SecurityConfig {
                                 "/index.html",
                                 "/style.css",
                                 "/app.js",
+                                "/logo.png",
                                 "/hello",
                                 "/error",
                                 "/favicon.ico",
@@ -47,6 +48,13 @@ public class SecurityConfig {
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .defaultSuccessUrl("/", true)
+                )
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .logoutSuccessUrl("/")
+                        .invalidateHttpSession(true)
+                        .clearAuthentication(true)
+                        .deleteCookies("JSESSIONID")
                 );
 
         return http.build();

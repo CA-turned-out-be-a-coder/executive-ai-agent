@@ -6,6 +6,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,6 +31,13 @@ public class FileChatController {
 
     @PostMapping("/chat/file/stream")
     public SseEmitter chatWithFile(@RequestBody FileChatRequest request) {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String userId = null;
+        if (principal instanceof OidcUser oidcUser) {
+            userId = oidcUser.getSubject();
+        }
+        String finalUserId = userId;
+
         SseEmitter emitter = new SseEmitter();
 
         String userText = (request.getMessage() == null || request.getMessage().isBlank())
@@ -73,7 +82,7 @@ public class FileChatController {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                chatMemoryService.persistUserMessage(request.getConversationId(), finalMemoryLabel);
+                chatMemoryService.persistUserMessage(request.getConversationId(), finalUserId, finalMemoryLabel);
                 chatMemoryService.persistAiMessage(request.getConversationId(), fullResponse.toString());
                 emitter.complete();
             }

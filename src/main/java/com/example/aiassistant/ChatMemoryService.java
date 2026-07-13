@@ -7,6 +7,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ChatMemoryService {
 
     private final ChatMessageRepository repository;
+    private final ConversationRepository conversationRepository;
     private final Map<String, ChatMemory> memories = new ConcurrentHashMap<>();
 
     private static final String SYSTEM_PROMPT = """
@@ -31,8 +33,9 @@ public class ChatMemoryService {
             - Use the calendar or email tools when the user asks about their schedule or messages.
             """;
 
-    public ChatMemoryService(ChatMessageRepository repository) {
+    public ChatMemoryService(ChatMessageRepository repository, ConversationRepository conversationRepository) {
         this.repository = repository;
+        this.conversationRepository = conversationRepository;
     }
 
     public ChatMemory getMemory(String conversationId) {
@@ -59,6 +62,27 @@ public class ChatMemoryService {
         return memory;
     }
 
+    private void touchConversation(String conversationId, String userId, String firstUserMessage) {
+        ConversationEntity conversation = conversationRepository.findById(conversationId).orElse(null);
+
+        if (conversation == null) {
+            String title = deriveTitle(firstUserMessage);
+            conversation = new ConversationEntity(conversationId, userId, title);
+            conversationRepository.save(conversation);
+        } else {
+            conversation.setUpdatedAt(LocalDateTime.now());
+            conversationRepository.save(conversation);
+        }
+    }
+
+    private String deriveTitle(String message) {
+        if (message == null || message.isBlank()) {
+            return "New chat";
+        }
+        String trimmed = message.trim();
+        return trimmed.length() > 48 ? trimmed.substring(0, 48) + "…" : trimmed;
+    }
+
     public void addUserMessage(String conversationId, String content) {
         getMemory(conversationId).add(UserMessage.from(content));
         repository.save(new ChatMessageEntity(conversationId, ChatMessageEntity.MessageRole.USER, content));
@@ -69,8 +93,9 @@ public class ChatMemoryService {
         repository.save(new ChatMessageEntity(conversationId, ChatMessageEntity.MessageRole.AI, content));
     }
 
-    public void persistUserMessage(String conversationId, String content) {
+    public void persistUserMessage(String conversationId, String userId, String content) {
         repository.save(new ChatMessageEntity(conversationId, ChatMessageEntity.MessageRole.USER, content));
+        touchConversation(conversationId, userId, content);
     }
 
     public void persistAiMessage(String conversationId, String content) {

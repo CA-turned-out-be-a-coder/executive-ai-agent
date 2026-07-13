@@ -22,15 +22,17 @@ public class ChatController {
     @PostMapping("/chat")
     public String chat(@RequestBody ChatRequest request) {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String userId = null;
         if (principal instanceof OidcUser oidcUser) {
             currentUserHolder.setCurrentUser(oidcUser);
+            userId = oidcUser.getSubject();
         }
 
         chatMemoryService.getMemory(request.getConversationId());
 
         String response = assistant.chat(request.getConversationId(), request.getMessage());
 
-        chatMemoryService.persistUserMessage(request.getConversationId(), request.getMessage());
+        chatMemoryService.persistUserMessage(request.getConversationId(), userId, request.getMessage());
         chatMemoryService.persistAiMessage(request.getConversationId(), response);
 
         return response;

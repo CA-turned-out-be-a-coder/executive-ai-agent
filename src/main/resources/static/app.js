@@ -1,7 +1,7 @@
-const conversationId = crypto.randomUUID();
+let conversationId = null;
 
 const loginScreen = document.getElementById('login-screen');
-const chatScreen = document.getElementById('chat-screen');
+const mainScreen = document.getElementById('main-screen');
 const messagesEl = document.getElementById('messages');
 const form = document.getElementById('chat-form');
 const input = document.getElementById('message-input');
@@ -13,6 +13,21 @@ const imagePreview = document.getElementById('image-preview');
 const docPreview = document.getElementById('doc-preview');
 const docPreviewName = document.getElementById('doc-preview-name');
 const removeFileBtn = document.getElementById('remove-image-btn');
+const newChatBtn = document.getElementById('new-chat-btn');
+const conversationListEl = document.getElementById('conversation-list');
+const menuToggleBtn = document.getElementById('menu-toggle-btn');
+const sidebarEl = document.getElementById('sidebar');
+const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+const profileRow = document.getElementById('profile-row');
+const profilePopover = document.getElementById('profile-popover');
+const profileAvatarImg = document.getElementById('profile-avatar-img');
+const profileAvatarFallback = document.getElementById('profile-avatar-fallback');
+const profileRowName = document.getElementById('profile-row-name');
+const popoverAvatarImg = document.getElementById('popover-avatar-img');
+const popoverAvatarFallback = document.getElementById('popover-avatar-fallback');
+const popoverName = document.getElementById('popover-name');
+const popoverEmail = document.getElementById('popover-email');
+const logoutBtn = document.getElementById('logout-btn');
 
 let selectedFileBase64 = null;
 let selectedFileMimeType = null;
@@ -23,28 +38,240 @@ function getCsrfToken() {
     return match ? decodeURIComponent(match[2]) : null;
 }
 
+function getInitials(name, email) {
+    const source = (name || email || '?').trim();
+    const parts = source.split(/\s+/);
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return source.slice(0, 2).toUpperCase();
+}
+
 async function checkAuth() {
     try {
         const res = await fetch('/api/me', { credentials: 'include', redirect: 'manual' });
         if (res.type === 'opaqueredirect' || res.status === 401) {
             showLogin();
         } else {
+            const profile = await res.json();
+            renderProfile(profile);
             showChat();
+            await loadConversations();
         }
     } catch (e) {
         showLogin();
     }
 }
 
+function renderProfile(profile) {
+    const initials = getInitials(profile.name, profile.email);
+    const firstName = (profile.name || profile.email || 'Account').split(' ')[0];
+
+    if (profile.picture) {
+        profileAvatarImg.src = profile.picture;
+        profileAvatarImg.classList.remove('hidden');
+        profileAvatarFallback.classList.add('hidden');
+
+        popoverAvatarImg.src = profile.picture;
+        popoverAvatarImg.classList.remove('hidden');
+        popoverAvatarFallback.classList.add('hidden');
+    } else {
+        profileAvatarFallback.textContent = initials;
+        popoverAvatarFallback.textContent = initials;
+    }
+
+    profileRowName.textContent = firstName;
+    popoverName.textContent = profile.name || 'Account';
+    popoverEmail.textContent = profile.email || '';
+}
+
 function showLogin() {
     loginScreen.classList.remove('hidden');
-    chatScreen.classList.add('hidden');
+    mainScreen.classList.add('hidden');
 }
 
 function showChat() {
     loginScreen.classList.add('hidden');
-    chatScreen.classList.remove('hidden');
+    mainScreen.classList.remove('hidden');
 }
+
+/* ---------- Mobile sidebar drawer ---------- */
+
+function openSidebar() {
+    sidebarEl.classList.add('open');
+    sidebarBackdrop.classList.add('open');
+}
+
+function closeSidebar() {
+    sidebarEl.classList.remove('open');
+    sidebarBackdrop.classList.remove('open');
+}
+
+menuToggleBtn.addEventListener('click', () => {
+    if (sidebarEl.classList.contains('open')) {
+        closeSidebar();
+    } else {
+        openSidebar();
+    }
+});
+
+sidebarBackdrop.addEventListener('click', closeSidebar);
+
+/* ---------- Profile popover ---------- */
+
+profileRow.addEventListener('click', (e) => {
+    e.stopPropagation();
+    profilePopover.classList.toggle('hidden');
+});
+
+document.addEventListener('click', (e) => {
+    if (!profilePopover.classList.contains('hidden')
+        && !profilePopover.contains(e.target)
+        && e.target !== profileRow
+        && !profileRow.contains(e.target)) {
+        profilePopover.classList.add('hidden');
+    }
+});
+
+logoutBtn.addEventListener('click', () => {
+    const formEl = document.createElement('form');
+    formEl.method = 'POST';
+    formEl.action = '/logout';
+
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_csrf';
+    csrfInput.value = getCsrfToken();
+    formEl.appendChild(csrfInput);
+
+    document.body.appendChild(formEl);
+    formEl.submit();
+});
+
+/* ---------- Conversations ---------- */
+
+async function loadConversations() {
+    try {
+        const res = await fetch('/conversations', { credentials: 'include' });
+        if (!res.ok) return;
+        const conversations = await res.json();
+
+        if (conversations.length === 0) {
+            await createNewConversation();
+            return;
+        }
+
+        renderConversationList(conversations);
+        await switchToConversation(conversations[0].id);
+    } catch (e) {
+        console.error('Failed to load conversations', e);
+    }
+}
+
+function renderConversationList(conversations) {
+    conversationListEl.innerHTML = '';
+    for (const conv of conversations) {
+        const item = document.createElement('div');
+        item.className = 'conversation-item' + (conv.id === conversationId ? ' active' : '');
+        item.dataset.id = conv.id;
+
+        const title = document.createElement('span');
+        title.className = 'title';
+        title.textContent = conv.title;
+        item.appendChild(title);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.type = 'button';
+        deleteBtn.textContent = '×';
+        deleteBtn.title = 'Delete this chat';
+        deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await deleteConversation(conv.id);
+        });
+        item.appendChild(deleteBtn);
+
+        item.addEventListener('click', () => {
+            switchToConversation(conv.id);
+            if (window.matchMedia('(max-width: 720px)').matches) {
+                closeSidebar();
+            }
+        });
+        conversationListEl.appendChild(item);
+    }
+}
+
+async function createNewConversation() {
+    try {
+        const res = await fetch('/conversations', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'X-XSRF-TOKEN': getCsrfToken() }
+        });
+        const data = await res.json();
+        conversationId = data.id;
+        messagesEl.innerHTML = '';
+        await refreshConversationList();
+        closeSidebar();
+    } catch (e) {
+        console.error('Failed to create conversation', e);
+    }
+}
+
+async function refreshConversationList() {
+    try {
+        const res = await fetch('/conversations', { credentials: 'include' });
+        if (!res.ok) return;
+        const conversations = await res.json();
+        renderConversationList(conversations);
+    } catch (e) {
+        console.error('Failed to refresh conversation list', e);
+    }
+}
+
+async function switchToConversation(id) {
+    conversationId = id;
+    messagesEl.innerHTML = '';
+
+    document.querySelectorAll('.conversation-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.id === id);
+    });
+
+    try {
+        const res = await fetch(`/conversations/${id}/messages`, { credentials: 'include' });
+        if (!res.ok) return;
+        const history = await res.json();
+        for (const msg of history) {
+            addMessage(msg.role, msg.content);
+        }
+    } catch (e) {
+        console.error('Failed to load conversation history', e);
+    }
+}
+
+async function deleteConversation(id) {
+    try {
+        await fetch(`/conversations/${id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: { 'X-XSRF-TOKEN': getCsrfToken() }
+        });
+
+        if (id === conversationId) {
+            await loadConversations();
+        } else {
+            await refreshConversationList();
+        }
+    } catch (e) {
+        console.error('Failed to delete conversation', e);
+    }
+}
+
+newChatBtn.addEventListener('click', () => {
+    createNewConversation();
+});
+
+/* ---------- Message rendering ---------- */
 
 function addMessage(role, text, attachment) {
     const div = document.createElement('div');
@@ -179,6 +406,7 @@ form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const message = input.value.trim();
     if (!message && !selectedFileBase64) return;
+    if (!conversationId) return;
 
     const hasFile = !!selectedFileBase64;
     const isImage = hasFile && selectedFileMimeType.startsWith('image/');
@@ -248,6 +476,8 @@ form.addEventListener('submit', async (e) => {
             assistantDiv.textContent = fullText;
             messagesEl.scrollTop = messagesEl.scrollHeight;
         }
+
+        await refreshConversationList();
     } catch (err) {
         assistantDiv.textContent = 'Error: ' + err.message;
     }

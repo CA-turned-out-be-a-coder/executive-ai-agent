@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <title>Dolly</title>
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +14,7 @@
 <div id="app">
     <header>
         <div class="nameplate">
+            <button type="button" id="menu-toggle-btn" aria-label="Toggle chat list">☰</button>
             <img src="logo.png" alt="Dolly" class="logo">
             <div class="nameplate-text">
                 <span class="eyebrow">Executive Assistant</span>
@@ -31,23 +33,53 @@
         </div>
     </div>
 
-    <div id="chat-screen" class="hidden">
-        <div id="messages"></div>
-        <div id="file-preview-wrap" class="hidden">
-            <img id="image-preview" alt="Selected image preview" class="hidden">
-            <div id="doc-preview" class="hidden">
-                <span id="doc-preview-icon">📄</span>
-                <span id="doc-preview-name"></span>
+    <div id="main-screen" class="hidden">
+        <div id="sidebar-backdrop"></div>
+
+        <aside id="sidebar">
+            <button type="button" id="new-chat-btn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                <span>New chat</span>
+            </button>
+
+            <span class="eyebrow sidebar-section-label">Recents</span>
+            <div id="conversation-list"></div>
+
+            <button type="button" id="profile-row">
+                <span id="profile-avatar-fallback"></span>
+                <img id="profile-avatar-img" class="hidden" alt="">
+                <span id="profile-row-name"></span>
+            </button>
+        </aside>
+
+        <div id="profile-popover" class="hidden">
+            <img id="popover-avatar-img" class="hidden" alt="">
+            <span id="popover-avatar-fallback"></span>
+            <div class="profile-details">
+                <div id="popover-name"></div>
+                <div id="popover-email"></div>
             </div>
-            <button type="button" id="remove-image-btn" title="Remove file">&times;</button>
+            <button type="button" id="logout-btn">Log out</button>
         </div>
-        <form id="chat-form">
-            <input type="file" id="image-input" accept="image/*,application/pdf,.pdf,.xlsx,.xls,.docx,.csv,.txt,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
-            <button type="button" id="attach-btn" title="Attach a file">📎</button>
-            <button type="button" id="mic-btn" title="Speak to Dolly">🎤</button>
-            <input type="text" id="message-input" placeholder="Ask Dolly about your calendar, email, or anything else..." autocomplete="off" />
-            <button type="submit">Send</button>
-        </form>
+
+        <div id="chat-screen">
+            <div id="messages"></div>
+            <div id="file-preview-wrap" class="hidden">
+                <img id="image-preview" alt="Selected image preview" class="hidden">
+                <div id="doc-preview" class="hidden">
+                    <span id="doc-preview-icon">📄</span>
+                    <span id="doc-preview-name"></span>
+                </div>
+                <button type="button" id="remove-image-btn" title="Remove file">&times;</button>
+            </div>
+            <form id="chat-form">
+                <input type="file" id="image-input" accept="image/*,application/pdf,.pdf,.xlsx,.xls,.docx,.csv,.txt,text/plain,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="hidden">
+                <button type="button" id="attach-btn" title="Attach a file">📎</button>
+                <button type="button" id="mic-btn" title="Speak to Dolly">🎤</button>
+                <input type="text" id="message-input" placeholder="Ask Dolly about your calendar, email, or anything else..." autocomplete="off" />
+                <button type="submit">Send</button>
+            </form>
+        </div>
     </div>
 </div>
 
