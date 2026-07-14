@@ -53,13 +53,88 @@
         </aside>
 
         <div id="profile-popover" class="hidden">
-            <img id="popover-avatar-img" class="hidden" alt="">
-            <span id="popover-avatar-fallback"></span>
-            <div class="profile-details">
-                <div id="popover-name"></div>
-                <div id="popover-email"></div>
+            <div class="popover-identity">
+                <img id="popover-avatar-img" class="hidden" alt="">
+                <span id="popover-avatar-fallback"></span>
+                <div class="profile-details">
+                    <div id="popover-name"></div>
+                    <div id="popover-email"></div>
+                </div>
             </div>
+            <button type="button" id="settings-btn">Settings</button>
             <button type="button" id="logout-btn">Log out</button>
+        </div>
+
+        <div id="settings-overlay" class="hidden">
+            <div id="settings-modal">
+                <div id="settings-header">
+                    <h2>Settings</h2>
+                    <button type="button" id="settings-close-btn" aria-label="Close settings">&times;</button>
+                </div>
+
+                <div id="settings-body">
+                    <span class="eyebrow settings-section-label">Account</span>
+                    <div class="settings-card">
+                        <div class="settings-row">
+                            <div class="settings-row-label">
+                                <span>Profile picture</span>
+                            </div>
+                            <div class="settings-row-control">
+                                <div id="settings-avatar-preview">
+                                    <img id="settings-avatar-img" class="hidden" alt="">
+                                    <span id="settings-avatar-fallback"></span>
+                                </div>
+                                <input type="file" id="settings-avatar-input" accept="image/*" class="hidden">
+                                <button type="button" id="settings-avatar-upload-btn">Upload</button>
+                                <button type="button" id="settings-avatar-remove-btn">Remove</button>
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-row-label">
+                                <span>Name</span>
+                            </div>
+                            <div class="settings-row-control">
+                                <input type="text" id="settings-name-input" placeholder="Your name">
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-row-label">
+                                <span>Nickname</span>
+                                <span class="settings-row-hint">What Dolly calls you</span>
+                            </div>
+                            <div class="settings-row-control">
+                                <input type="text" id="settings-nickname-input" placeholder="Optional">
+                            </div>
+                        </div>
+                        <div class="settings-row">
+                            <div class="settings-row-label">
+                                <span>Email</span>
+                            </div>
+                            <div class="settings-row-control">
+                                <span id="settings-email-display" class="settings-static-value"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <span class="eyebrow settings-section-label">Data</span>
+                    <div class="settings-card">
+                        <div class="settings-row">
+                            <div class="settings-row-label">
+                                <span>Clear all conversations</span>
+                                <span class="settings-row-hint">Permanently deletes your chat history</span>
+                            </div>
+                            <div class="settings-row-control">
+                                <button type="button" id="settings-clear-history-btn" class="settings-danger-btn">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="settings-save-row">
+                        <span id="settings-save-status"></span>
+                        <button type="button" id="settings-save-btn">Save changes</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="chat-screen">

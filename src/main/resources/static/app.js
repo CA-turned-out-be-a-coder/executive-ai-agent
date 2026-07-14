@@ -1,4 +1,5 @@
 let conversationId = null;
+let currentProfile = null;
 
 const loginScreen = document.getElementById('login-screen');
 const mainScreen = document.getElementById('main-screen');
@@ -28,6 +29,20 @@ const popoverAvatarFallback = document.getElementById('popover-avatar-fallback')
 const popoverName = document.getElementById('popover-name');
 const popoverEmail = document.getElementById('popover-email');
 const logoutBtn = document.getElementById('logout-btn');
+const settingsBtn = document.getElementById('settings-btn');
+const settingsOverlay = document.getElementById('settings-overlay');
+const settingsCloseBtn = document.getElementById('settings-close-btn');
+const settingsNameInput = document.getElementById('settings-name-input');
+const settingsNicknameInput = document.getElementById('settings-nickname-input');
+const settingsEmailDisplay = document.getElementById('settings-email-display');
+const settingsAvatarImg = document.getElementById('settings-avatar-img');
+const settingsAvatarFallback = document.getElementById('settings-avatar-fallback');
+const settingsAvatarInput = document.getElementById('settings-avatar-input');
+const settingsAvatarUploadBtn = document.getElementById('settings-avatar-upload-btn');
+const settingsAvatarRemoveBtn = document.getElementById('settings-avatar-remove-btn');
+const settingsClearHistoryBtn = document.getElementById('settings-clear-history-btn');
+const settingsSaveBtn = document.getElementById('settings-save-btn');
+const settingsSaveStatus = document.getElementById('settings-save-status');
 
 let selectedFileBase64 = null;
 let selectedFileMimeType = null;
@@ -49,12 +64,12 @@ function getInitials(name, email) {
 
 async function checkAuth() {
     try {
-        const res = await fetch('/api/me', { credentials: 'include', redirect: 'manual' });
+        const res = await fetch('/api/profile', { credentials: 'include', redirect: 'manual' });
         if (res.type === 'opaqueredirect' || res.status === 401) {
             showLogin();
         } else {
-            const profile = await res.json();
-            renderProfile(profile);
+            currentProfile = await res.json();
+            renderProfile(currentProfile);
             showChat();
             await loadConversations();
         }
@@ -75,12 +90,25 @@ function renderProfile(profile) {
         popoverAvatarImg.src = profile.picture;
         popoverAvatarImg.classList.remove('hidden');
         popoverAvatarFallback.classList.add('hidden');
+
+        settingsAvatarImg.src = profile.picture;
+        settingsAvatarImg.classList.remove('hidden');
+        settingsAvatarFallback.classList.add('hidden');
     } else {
+        profileAvatarImg.classList.add('hidden');
+        profileAvatarFallback.classList.remove('hidden');
         profileAvatarFallback.textContent = initials;
+
+        popoverAvatarImg.classList.add('hidden');
+        popoverAvatarFallback.classList.remove('hidden');
         popoverAvatarFallback.textContent = initials;
+
+        settingsAvatarImg.classList.add('hidden');
+        settingsAvatarFallback.classList.remove('hidden');
+        settingsAvatarFallback.textContent = initials;
     }
 
-    profileRowName.textContent = firstName;
+    profileRowName.textContent = profile.nickname || firstName;
     popoverName.textContent = profile.name || 'Account';
     popoverEmail.textContent = profile.email || '';
 }
@@ -146,6 +174,119 @@ logoutBtn.addEventListener('click', () => {
 
     document.body.appendChild(formEl);
     formEl.submit();
+});
+
+/* ---------- Settings modal ---------- */
+
+function openSettings() {
+    profilePopover.classList.add('hidden');
+    if (currentProfile) {
+        settingsNameInput.value = currentProfile.name || '';
+        settingsNicknameInput.value = currentProfile.nickname || '';
+        settingsEmailDisplay.textContent = currentProfile.email || '';
+    }
+    settingsSaveStatus.textContent = '';
+    settingsOverlay.classList.remove('hidden');
+}
+
+function closeSettings() {
+    settingsOverlay.classList.add('hidden');
+}
+
+settingsBtn.addEventListener('click', openSettings);
+settingsCloseBtn.addEventListener('click', closeSettings);
+
+settingsOverlay.addEventListener('click', (e) => {
+    if (e.target === settingsOverlay) {
+        closeSettings();
+    }
+});
+
+settingsSaveBtn.addEventListener('click', async () => {
+    settingsSaveStatus.textContent = 'Saving...';
+    try {
+        const res = await fetch('/api/profile', {
+            method: 'PUT',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-XSRF-TOKEN': getCsrfToken()
+            },
+            body: JSON.stringify({
+                name: settingsNameInput.value.trim(),
+                nickname: settingsNicknameInput.value.trim()
+            })
+        });
+        if (!res.ok) throw new Error('Save failed');
+        currentProfile = await res.json();
+        renderProfile(currentProfile);
+        settingsSaveStatus.textContent = 'Saved';
+        setTimeout(() => { settingsSaveStatus.textContent = ''; }, 2000);
+    } catch (e) {
+        settingsSaveStatus.textContent = 'Could not save changes';
+    }
+});
+
+settingsAvatarUploadBtn.addEventListener('click', () => {
+    settingsAvatarInput.click();
+});
+
+settingsAvatarInput.addEventListener('change', () => {
+    const file = settingsAvatarInput.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+        try {
+            const res = await fetch('/api/profile/picture', {
+                method: 'PUT',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-XSRF-TOKEN': getCsrfToken()
+                },
+                body: JSON.stringify({ image: reader.result })
+            });
+            if (!res.ok) throw new Error('Upload failed');
+            currentProfile = await res.json();
+            renderProfile(currentProfile);
+        } catch (e) {
+            settingsSaveStatus.textContent = 'Could not upload picture';
+        }
+    };
+    reader.readAsDataURL(file);
+});
+
+settingsAvatarRemoveBtn.addEventListener('click', async () => {
+    try {
+        const res = await fetch('/api/profile/picture', {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: { 'X-XSRF-TOKEN': getCsrfToken() }
+        });
+        if (!res.ok) throw new Error('Remove failed');
+        currentProfile = await res.json();
+        renderProfile(currentProfile);
+    } catch (e) {
+        settingsSaveStatus.textContent = 'Could not remove picture';
+    }
+});
+
+settingsClearHistoryBtn.addEventListener('click', async () => {
+    const confirmed = window.confirm('This will permanently delete all your conversations. Continue?');
+    if (!confirmed) return;
+
+    try {
+        await fetch('/conversations', {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: { 'X-XSRF-TOKEN': getCsrfToken() }
+        });
+        closeSettings();
+        await loadConversations();
+    } catch (e) {
+        settingsSaveStatus.textContent = 'Could not clear history';
+    }
 });
 
 /* ---------- Conversations ---------- */

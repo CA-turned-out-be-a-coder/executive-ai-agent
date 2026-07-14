@@ -74,4 +74,11 @@ public class ConversationController {
         }
         conversationRepository.deleteById(id);
     }
+
+    @DeleteMapping
+    public void deleteAllConversations() {
+        String userId = getCurrentUserId();
+        List<ConversationEntity> conversations = conversationRepository.findByUserIdOrderByUpdatedAtDesc(userId);
+        conversationRepository.deleteAll(conversations);
+    }
 }
