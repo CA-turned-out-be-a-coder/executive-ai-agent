@@ -155,10 +155,10 @@ public class AssistantTools {
         }
     }
 
-    @Tool("Search the web for quick facts about well-known topics, people, places, or things. " +
-            "This only returns short factual summaries (similar to an encyclopedia entry), not current news, " +
-            "recent events, or detailed multi-result search listings. Do not rely on this for anything time-sensitive " +
-            "or that requires up-to-the-minute information.")
+    @Tool("Search the web for current information, news, facts, or anything you don't already know with " +
+            "certainty. Returns a synthesized answer plus real source links with content excerpts. Use this " +
+            "whenever the user asks about anything time-sensitive, recent, or that you're not fully certain about, " +
+            "rather than answering from memory.")
     public String searchWeb(String query) {
         try {
             return webSearchService.search(query);

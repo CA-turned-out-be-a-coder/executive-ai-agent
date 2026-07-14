@@ -1,5 +1,6 @@
 package com.example.aiassistant;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
@@ -11,38 +12,53 @@ public class WebSearchService {
 
     private final RestClient restClient = RestClient.create();
 
+    @Value("${tavily.api.key}")
+    private String apiKey;
+
     public String search(String query) {
-        Map<String, Object> response = restClient.get()
-                .uri("https://api.duckduckgo.com/?q={query}&format=json&no_html=1&skip_disambig=1", query)
+        Map<String, Object> requestBody = Map.of(
+                "query", query,
+                "search_depth", "basic",
+                "include_answer", true,
+                "max_results", 5
+        );
+
+        Map<String, Object> response = restClient.post()
+                .uri("https://api.tavily.com/search")
+                .header("Authorization", "Bearer " + apiKey)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(requestBody)
                 .retrieve()
                 .body(Map.class);
 
-        String abstractText = (String) response.get("AbstractText");
-        String abstractSource = (String) response.get("AbstractSource");
-        String abstractUrl = (String) response.get("AbstractURL");
+        StringBuilder result = new StringBuilder();
 
-        if (abstractText != null && !abstractText.isBlank()) {
-            String result = abstractText;
-            if (abstractSource != null && !abstractSource.isBlank()) {
-                result += " (Source: " + abstractSource;
-                if (abstractUrl != null && !abstractUrl.isBlank()) {
-                    result += ", " + abstractUrl;
+        String answer = (String) response.get("answer");
+        if (answer != null && !answer.isBlank()) {
+            result.append(answer).append("\n\n");
+        }
+
+        List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+        if (results != null && !results.isEmpty()) {
+            result.append("Sources:\n");
+            for (Map<String, Object> item : results) {
+                String title = (String) item.get("title");
+                String url = (String) item.get("url");
+                String content = (String) item.get("content");
+
+                result.append("- ").append(title).append(" (").append(url).append(")");
+                if (content != null && !content.isBlank()) {
+                    String snippet = content.length() > 200 ? content.substring(0, 200) + "..." : content;
+                    result.append(": ").append(snippet);
                 }
-                result += ")";
-            }
-            return result;
-        }
-
-        List<Map<String, Object>> relatedTopics = (List<Map<String, Object>>) response.get("RelatedTopics");
-        if (relatedTopics != null && !relatedTopics.isEmpty()) {
-            Map<String, Object> first = relatedTopics.get(0);
-            String text = (String) first.get("Text");
-            if (text != null && !text.isBlank()) {
-                return text;
+                result.append("\n");
             }
         }
 
-        return "No quick answer found for '" + query + "'. This search tool only covers well-known facts and topics, " +
-                "not current news or detailed web results.";
+        if (result.isEmpty()) {
+            return "No results found for '" + query + "'.";
+        }
+
+        return result.toString();
     }
 }
