@@ -156,12 +156,14 @@ public class AssistantTools {
     }
 
     @Tool("Search the web for current information, news, facts, or anything you don't already know with " +
-            "certainty. Returns a synthesized answer plus real source links with content excerpts. Use this " +
-            "whenever the user asks about anything time-sensitive, recent, or that you're not fully certain about, " +
-            "rather than answering from memory.")
-    public String searchWeb(String query) {
+            "certainty. Returns a synthesized answer plus real source links with content excerpts and publish " +
+            "dates. Set recent=true for news, current events, or anything asking about the latest/most recent " +
+            "occurrence of something (this searches news from the last 30 days specifically). Set recent=false " +
+            "for general facts that do not change often. Always include the current year in the query itself " +
+            "when searching for the most recent occurrence of a recurring event.")
+    public String searchWeb(String query, boolean recent) {
         try {
-            return webSearchService.search(query);
+            return webSearchService.search(query, recent);
         } catch (Exception e) {
             return "Could not perform web search: " + e.getMessage();
         }

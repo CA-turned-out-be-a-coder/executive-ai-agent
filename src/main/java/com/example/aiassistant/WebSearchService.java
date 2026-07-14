@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -15,13 +16,12 @@ public class WebSearchService {
     @Value("${tavily.api.key}")
     private String apiKey;
 
-    public String search(String query) {
-        Map<String, Object> requestBody = Map.of(
-                "query", query,
-                "search_depth", "basic",
-                "include_answer", true,
-                "max_results", 5
-        );
+    public String search(String query, boolean recent) {
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("query", query);
+        requestBody.put("include_answer", true);
+        requestBody.put("max_results", 5);
+        requestBody.put("search_depth", recent ? "advanced" : "basic");
 
         Map<String, Object> response = restClient.post()
                 .uri("https://api.tavily.com/search")
@@ -45,8 +45,12 @@ public class WebSearchService {
                 String title = (String) item.get("title");
                 String url = (String) item.get("url");
                 String content = (String) item.get("content");
+                String publishedDate = (String) item.get("published_date");
 
                 result.append("- ").append(title).append(" (").append(url).append(")");
+                if (publishedDate != null && !publishedDate.isBlank()) {
+                    result.append(" [").append(publishedDate).append("]");
+                }
                 if (content != null && !content.isBlank()) {
                     String snippet = content.length() > 200 ? content.substring(0, 200) + "..." : content;
                     result.append(": ").append(snippet);
