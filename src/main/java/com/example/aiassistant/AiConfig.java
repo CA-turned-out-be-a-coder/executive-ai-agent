@@ -27,7 +27,7 @@ public class AiConfig {
     public StreamingChatModel streamingChatModel() {
         return OpenAiStreamingChatModel.builder()
                 .apiKey(openaiApiKey)
-                .modelName("gpt-4o-mini")
+                .modelName("chat-latest")
                 .build();
     }
 
