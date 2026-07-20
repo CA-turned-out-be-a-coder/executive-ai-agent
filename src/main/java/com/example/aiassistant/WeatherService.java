@@ -42,7 +42,7 @@ public class WeatherService {
 
         String condition = describeWeatherCode(weatherCode);
 
-        return String.format("Weather in %s, %s: %.0f°F, %s, %.0f%% humidity, wind %.0f mph",
+        return String.format("Per today's live weather check: %s, %s is currently %.0f°F, %s, %.0f%% humidity, wind %.0f mph",
                 resolvedName, country, tempF, condition, humidity, windSpeed);
     }
 

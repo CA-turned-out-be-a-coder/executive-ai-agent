@@ -8,7 +8,9 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(properties = {
         "openai.api.key=test-key-for-context-load-only",
         "spring.security.oauth2.client.registration.google.client-id=test-client-id",
-        "spring.security.oauth2.client.registration.google.client-secret=test-client-secret"
+        "spring.security.oauth2.client.registration.google.client-secret=test-client-secret",
+        "twelvedata.api.key=test-key-for-context-load-only",
+        "tavily.api.key=test-key-for-context-load-only"
 })
 class AiAssistantApplicationTests {
 

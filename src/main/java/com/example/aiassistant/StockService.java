@@ -33,7 +33,7 @@ public class StockService {
 
         String direction = change >= 0 ? "up" : "down";
 
-        return String.format("%s (%s): %.2f %s, %s %.2f (%.2f%%) today",
+        return String.format("Per a live stock check: %s (%s) is at %.2f %s, %s %.2f (%.2f%%) today",
                 name, symbol.toUpperCase(), price, currency, direction, Math.abs(change), Math.abs(percentChange));
     }
 }

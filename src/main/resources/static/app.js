@@ -417,7 +417,12 @@ newChatBtn.addEventListener('click', () => {
 function addMessage(role, text, attachment) {
     const div = document.createElement('div');
     div.className = `msg ${role}`;
-    div.textContent = text;
+
+    const textSpan = document.createElement('span');
+    textSpan.className = 'msg-text';
+    textSpan.textContent = text;
+    div.appendChild(textSpan);
+
     if (attachment && attachment.isImage) {
         const img = document.createElement('img');
         img.src = attachment.dataUrl;
@@ -435,6 +440,29 @@ function addMessage(role, text, attachment) {
     messagesEl.appendChild(div);
     messagesEl.scrollTop = messagesEl.scrollHeight;
     return div;
+}
+
+function setMessageText(div, text) {
+    const textSpan = div.querySelector('.msg-text');
+    if (textSpan) {
+        textSpan.textContent = text;
+    }
+}
+
+function renderToolBadges(div, badges) {
+    let badgeRow = div.querySelector('.tool-badges');
+    if (!badgeRow) {
+        badgeRow = document.createElement('div');
+        badgeRow.className = 'tool-badges';
+        div.appendChild(badgeRow);
+    }
+    badgeRow.innerHTML = '';
+    for (const badge of badges) {
+        const chip = document.createElement('span');
+        chip.className = 'tool-badge';
+        chip.textContent = badge;
+        badgeRow.appendChild(chip);
+    }
 }
 
 /* ---------- Voice input ---------- */
@@ -545,6 +573,7 @@ function clearSelectedFile() {
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    DollyVoice.stop();
     const message = input.value.trim();
     if (!message && !selectedFileBase64) return;
     if (!conversationId) return;
@@ -588,7 +617,7 @@ form.addEventListener('submit', async (e) => {
         });
 
         if (!response.ok || !response.body) {
-            assistantDiv.textContent = 'Error: could not reach Dolly.';
+            setMessageText(assistantDiv, 'Error: could not reach Dolly.');
             return;
         }
 
@@ -607,20 +636,30 @@ form.addEventListener('submit', async (e) => {
             buffer = events.pop();
 
             for (const event of events) {
-                const dataLines = event
-                    .split('\n')
+                const lines = event.split('\n');
+                const isToolEvent = lines.some(line => line.startsWith('event:') && line.slice(6).trim() === 'tools');
+
+                const dataLines = lines
                     .filter(line => line.startsWith('data:'))
                     .map(line => line.slice(5));
-                fullText += dataLines.join('\n');
+
+                if (isToolEvent) {
+                    const badges = dataLines.join('\n').split(',').filter(Boolean);
+                    renderToolBadges(assistantDiv, badges);
+                } else {
+                    fullText += dataLines.join('\n');
+                }
             }
 
-            assistantDiv.textContent = fullText;
+            setMessageText(assistantDiv, fullText);
             messagesEl.scrollTop = messagesEl.scrollHeight;
         }
 
+        attachSpeakButton(assistantDiv, fullText);
+
         await refreshConversationList();
     } catch (err) {
-        assistantDiv.textContent = 'Error: ' + err.message;
+        setMessageText(assistantDiv, 'Error: ' + err.message);
     }
 });
 

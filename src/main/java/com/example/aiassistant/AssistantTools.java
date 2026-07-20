@@ -35,8 +35,8 @@ public class AssistantTools {
     public String getUpcomingEvents() {
         try {
             List<String> events = calendarService.getUpcomingEvents(getCurrentUser());
-            if (events.isEmpty()) return "No upcoming events found.";
-            return String.join("\n", events);
+            if (events.isEmpty()) return "Your calendar shows no upcoming events.";
+            return "Your calendar shows:\n" + String.join("\n", events);
         } catch (Exception e) {
             e.printStackTrace();
             return "Could not retrieve calendar events: " + e.getMessage();
@@ -48,8 +48,8 @@ public class AssistantTools {
     public String getRecentEmails() {
         try {
             List<String> emails = gmailService.getRecentSubjects(getCurrentUser());
-            if (emails.isEmpty()) return "No recent emails found.";
-            return String.join("\n", emails);
+            if (emails.isEmpty()) return "Checking your inbox, no recent emails found.";
+            return "Checking your inbox, here's what's there:\n" + String.join("\n", emails);
         } catch (Exception e) {
             return "Could not retrieve emails: " + e.getMessage();
         }
@@ -62,8 +62,8 @@ public class AssistantTools {
     public String searchEmails(String query) {
         try {
             List<String> emails = gmailService.searchEmails(getCurrentUser(), query);
-            if (emails.isEmpty()) return "No emails found matching that search.";
-            return String.join("\n", emails);
+            if (emails.isEmpty()) return "Searching your inbox, no emails matched that search.";
+            return "Searching your inbox, found:\n" + String.join("\n", emails);
         } catch (Exception e) {
             return "Could not search emails: " + e.getMessage();
         }
@@ -74,7 +74,7 @@ public class AssistantTools {
             "the user asks what an email says, what it's about, or wants you to summarize or act on its actual content.")
     public String readEmail(String messageId) {
         try {
-            return gmailService.getEmailContent(getCurrentUser(), messageId);
+            return "Reading that email directly from your inbox:\n" + gmailService.getEmailContent(getCurrentUser(), messageId);
         } catch (Exception e) {
             return "Could not read email content: " + e.getMessage();
         }

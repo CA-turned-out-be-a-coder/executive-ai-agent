@@ -13,6 +13,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -29,13 +30,23 @@ class AssistantToolsTest {
     private CurrentUserHolder currentUserHolder;
 
     @Mock
+    private WeatherService weatherService;
+
+    @Mock
+    private StockService stockService;
+
+    @Mock
+    private WebSearchService webSearchService;
+
+    @Mock
     private OidcUser oidcUser;
 
     private AssistantTools assistantTools;
 
     @BeforeEach
     void setUp() {
-        assistantTools = new AssistantTools(calendarService, gmailService, currentUserHolder);
+        assistantTools = new AssistantTools(calendarService, gmailService, currentUserHolder,
+                weatherService, stockService, webSearchService);
     }
 
     @Test
@@ -45,7 +56,7 @@ class AssistantToolsTest {
 
         String result = assistantTools.getUpcomingEvents();
 
-        assertEquals("Meeting at 10am\nFlight at 2pm", result);
+        assertEquals("Your calendar shows:\nMeeting at 10am\nFlight at 2pm", result);
     }
 
     @Test
@@ -55,7 +66,7 @@ class AssistantToolsTest {
 
         String result = assistantTools.getUpcomingEvents();
 
-        assertEquals("No upcoming events found.", result);
+        assertEquals("Your calendar shows no upcoming events.", result);
     }
 
     @Test
@@ -119,7 +130,7 @@ class AssistantToolsTest {
 
         String result = assistantTools.searchEmails("from:sarah@company.com");
 
-        assertEquals("Invoice — from sarah@company.com\nFollow up — from sarah@company.com", result);
+        assertEquals("Searching your inbox, found:\nInvoice — from sarah@company.com\nFollow up — from sarah@company.com", result);
     }
 
     @Test
@@ -129,7 +140,7 @@ class AssistantToolsTest {
 
         String result = assistantTools.searchEmails("subject:nonexistent");
 
-        assertEquals("No emails found matching that search.", result);
+        assertEquals("Searching your inbox, no emails matched that search.", result);
     }
 
     @Test
@@ -186,5 +197,85 @@ class AssistantToolsTest {
 
         assertTrue(result.startsWith("Failed to delete event:"));
         assertTrue(result.contains("Event not found"));
+    }
+
+    @Test
+    void readEmail_returnsContent_whenSuccessful() throws Exception {
+        when(currentUserHolder.getCurrentUser()).thenReturn(oidcUser);
+        when(gmailService.getEmailContent(oidcUser, "msg123"))
+                .thenReturn("Subject: Just a Note\nFrom: friend@example.com\n\nHey, how are you?");
+
+        String result = assistantTools.readEmail("msg123");
+
+        assertEquals("Reading that email directly from your inbox:\nSubject: Just a Note\nFrom: friend@example.com\n\nHey, how are you?", result);
+    }
+
+    @Test
+    void readEmail_returnsErrorMessage_whenServiceThrowsException() throws Exception {
+        when(currentUserHolder.getCurrentUser()).thenReturn(oidcUser);
+        when(gmailService.getEmailContent(oidcUser, "bad-id")).thenThrow(new RuntimeException("Message not found"));
+
+        String result = assistantTools.readEmail("bad-id");
+
+        assertTrue(result.startsWith("Could not read email content:"));
+        assertTrue(result.contains("Message not found"));
+    }
+
+    @Test
+    void getWeather_returnsWeatherString_whenSuccessful() throws Exception {
+        when(weatherService.getCurrentWeather("Phoenix")).thenReturn("Weather in Phoenix, US: 105°F, clear sky");
+
+        String result = assistantTools.getWeather("Phoenix");
+
+        assertEquals("Weather in Phoenix, US: 105°F, clear sky", result);
+    }
+
+    @Test
+    void getWeather_returnsErrorMessage_whenServiceThrowsException() {
+        when(weatherService.getCurrentWeather("Nowhere")).thenThrow(new RuntimeException("Could not find location: Nowhere"));
+
+        String result = assistantTools.getWeather("Nowhere");
+
+        assertTrue(result.startsWith("Could not retrieve weather:"));
+        assertTrue(result.contains("Could not find location: Nowhere"));
+    }
+
+    @Test
+    void getStockQuote_returnsQuoteString_whenSuccessful() throws Exception {
+        when(stockService.getQuote("AAPL")).thenReturn("Apple Inc. (AAPL): 213.55 USD, up 2.10 (0.99%) today");
+
+        String result = assistantTools.getStockQuote("AAPL");
+
+        assertEquals("Apple Inc. (AAPL): 213.55 USD, up 2.10 (0.99%) today", result);
+    }
+
+    @Test
+    void getStockQuote_returnsErrorMessage_whenServiceThrowsException() {
+        when(stockService.getQuote("BADSYM")).thenThrow(new RuntimeException("Could not find stock symbol 'BADSYM'"));
+
+        String result = assistantTools.getStockQuote("BADSYM");
+
+        assertTrue(result.startsWith("Could not retrieve stock quote:"));
+        assertTrue(result.contains("Could not find stock symbol 'BADSYM'"));
+    }
+
+    @Test
+    void searchWeb_returnsResultString_whenSuccessful() {
+        when(webSearchService.search("Super Bowl 2026 winner", true))
+                .thenReturn("The Kansas City Chiefs won Super Bowl LX.\n\nSources:\n- ...");
+
+        String result = assistantTools.searchWeb("Super Bowl 2026 winner", true);
+
+        assertTrue(result.startsWith("The Kansas City Chiefs won Super Bowl LX."));
+    }
+
+    @Test
+    void searchWeb_returnsErrorMessage_whenServiceThrowsException() {
+        when(webSearchService.search(anyString(), anyBoolean())).thenThrow(new RuntimeException("Tavily API unavailable"));
+
+        String result = assistantTools.searchWeb("some query", false);
+
+        assertTrue(result.startsWith("Could not perform web search:"));
+        assertTrue(result.contains("Tavily API unavailable"));
     }
 }
